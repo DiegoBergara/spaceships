@@ -63,14 +63,14 @@
   - provocan `PLANETARY IMPACT` o `SOLAR IMPACT` al colisionar;
   - el escudo absorbe un solo impacto celestial.
 
-### Controles mobile
+### Controles táctiles y mouse
 
-- Tap en el menú: inicia la partida.
-- Tap en game over: reinicia.
-- Inclinar el teléfono: mueve la nave.
-- Tap durante la partida: dispara una ráfaga corta.
-- En Safari/iOS se solicita permiso de orientación desde el primer tap, como exige el navegador.
-- El menú muestra instrucciones mobile en dispositivos táctiles.
+- Tap/click en el menú: inicia la partida.
+- Tap/click en game over: reinicia.
+- Arrastrar con touch: mueve la nave y dispara automáticamente mientras el dedo se desplaza.
+- Arrastrar con botón primario del mouse: replica el mismo movimiento y fuego automático.
+- WASD, flechas, Espacio, Enter y R siguen funcionando en paralelo.
+- El menú muestra instrucciones de arrastre en dispositivos táctiles.
 
 ## Validación
 
@@ -87,7 +87,7 @@ Resultado: `RESULT PASS`.
 El probe headless verifica, entre otros:
 
 - fondo animado del menú y Enter para comenzar;
-- tilt y tap mobile;
+- arrastre touch/mouse con movimiento y fuego automático;
 - audio procedural y efectos offline;
 - partículas del Sol y chips de hielo visuales;
 - disparos, división de asteroides, dificultad, HUD y power-ups;

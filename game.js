@@ -465,30 +465,37 @@
 
   // ---- Input (WASD / flechas) ----
   var keys = {};
-  var mobile = { enabled: false, calibrated: false, baseBeta: 0, baseGamma: 0, x: 0, y: 0, fireUntil: 0 };
+  var pointerControl = { active: false, pointerId: null, startX: 0, startY: 0, x: 0, y: 0, fireUntil: 0 };
 
   function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
-  function enableMobileTilt() {
-    if (!window.DeviceOrientationEvent) return;
-    function granted() { mobile.enabled = true; mobile.calibrated = false; }
-    // Safari/iOS exige pedir permiso dentro de un gesto del usuario; Android expone el sensor directamente.
-    if (typeof window.DeviceOrientationEvent.requestPermission === 'function') {
-      window.DeviceOrientationEvent.requestPermission().then(function (result) {
-        if (result === 'granted') granted();
-      }).catch(function () {});
-    } else {
-      granted();
-    }
+  function beginPointerControl(e) {
+    pointerControl.active = true;
+    pointerControl.pointerId = e.pointerId;
+    pointerControl.startX = e.clientX;
+    pointerControl.startY = e.clientY;
+    pointerControl.x = 0;
+    pointerControl.y = 0;
+    if (renderer.domElement.setPointerCapture) renderer.domElement.setPointerCapture(e.pointerId);
   }
-  window.addEventListener('deviceorientation', function (e) {
-    if (!mobile.enabled || e.beta === null || e.gamma === null) return;
-    if (!mobile.calibrated) {
-      mobile.baseBeta = e.beta; mobile.baseGamma = e.gamma; mobile.calibrated = true;
-      return;
-    }
-    mobile.x = clamp((e.gamma - mobile.baseGamma) / 18, -1, 1);
-    mobile.y = clamp(-(e.beta - mobile.baseBeta) / 18, -1, 1);
-  }, true);
+  function movePointerControl(e) {
+    if (!pointerControl.active || e.pointerId !== pointerControl.pointerId) return;
+    var dx = e.clientX - pointerControl.startX, dy = e.clientY - pointerControl.startY;
+    pointerControl.x = clamp(dx / 82, -1, 1);
+    pointerControl.y = clamp(-dy / 82, -1, 1);
+    // Arrastrar controla la nave y mantiene el fuego activo mientras el dedo/mouse se mueve.
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) pointerControl.fireUntil = simTime + 0.22;
+    e.preventDefault();
+  }
+  function endPointerControl(e) {
+    if (e.pointerId !== pointerControl.pointerId) return;
+    pointerControl.active = false;
+    pointerControl.pointerId = null;
+    pointerControl.x = 0;
+    pointerControl.y = 0;
+  }
+  window.addEventListener('pointermove', movePointerControl, { passive: false });
+  window.addEventListener('pointerup', endPointerControl, true);
+  window.addEventListener('pointercancel', endPointerControl, true);
   window.addEventListener('keydown', function (e) {
     keys[e.code] = true;
     // Cualquier tecla física desbloquea Web Audio, incluso si el foco llegó al canvas antes que Enter.
@@ -511,7 +518,7 @@
   function updateShip(dt) {
     var ax = ((keys.KeyD || keys.ArrowRight) ? 1 : 0) - ((keys.KeyA || keys.ArrowLeft) ? 1 : 0);
     var ay = ((keys.KeyW || keys.ArrowUp) ? 1 : 0) - ((keys.KeyS || keys.ArrowDown) ? 1 : 0);
-    if (mobile.enabled && mobile.calibrated) { ax += mobile.x; ay += mobile.y; }
+    if (pointerControl.active) { ax += pointerControl.x; ay += pointerControl.y; }
     ax = clamp(ax, -1, 1); ay = clamp(ay, -1, 1);
     // La nave gana respuesta con el nivel de amenaza, para seguir siendo pilotable.
     var ACC = 42 * playerSpeed(simTime);
@@ -786,7 +793,7 @@
 
   function fireBullets(dt) {
     fire.cd -= dt;
-    if (state === 'play' && (keys.Space || (mobile.enabled && simTime < mobile.fireUntil)) && fire.cd <= 0) {
+    if (state === 'play' && (keys.Space || (pointerControl.active && simTime < pointerControl.fireUntil)) && fire.cd <= 0) {
       fire.cd = effects.rapid > 0 ? 0.065 : fire.cooldown;
       var spread = effects.triple > 0 ? [-0.52, 0, 0.52] : [0];
       for (var n = 0; n < spread.length; n++) spawnBullet(spread[n]);
@@ -1054,16 +1061,15 @@
     else audioEngine.toggle();
     syncAudioLabel();
   });
-  // Un tap inicia la partida en móvil y, durante la partida, dispara una ráfaga corta.
+  // Tocar o clickear inicia/reinicia; arrastrar con touch o mouse mueve y dispara.
   window.addEventListener('pointerdown', function (e) {
-    if (e.target === audioBtn) return;
+    if (e.target === audioBtn || e.button !== 0) return;
     if (!audioEngine.active) { audioEngine.start(); syncAudioLabel(); }
-    enableMobileTilt();
     if (state === 'menu' || state === 'crashed') {
       startGame();
       return;
     }
-    if (state === 'play' && e.pointerType !== 'mouse') mobile.fireUntil = simTime + 0.19;
+    if (state === 'play') beginPointerControl(e);
   });
   syncAudioLabel();
 
@@ -1137,7 +1143,7 @@
     for (var k in effects) effects[k] = 0;
     shieldBubble.visible = false;
     powerTimer = 8;
-    spawnTimer = 0.5; fire.cd = 0; mobile.fireUntil = 0;
+    spawnTimer = 0.5; fire.cd = 0; pointerControl.fireUntil = 0;
     flyby.visible = false; flybyTimer = 12 + Math.random() * 7;
     stats.spawned = 0; stats.alive = 0; stats.destroyed = 0; stats.fired = 0; stats.crashed = false;
     lastScore = -1; lastTime = -1;
@@ -1158,7 +1164,7 @@
     // El inicio reutiliza exactamente la composición del game over.
     msg.innerHTML = '<div id="crashBox"><div class="t1">SPACESHIPS</div>' +
       '<div class="t2">ASTEROID ASSAULT</div>' +
-      '<div class="t3">WASD / FLECHAS para volar · ESPACIO para disparar<span class="mobile"><br>INCLINA para volar · TOCA para disparar</span></div>' +
+      '<div class="t3">WASD / FLECHAS para volar · ESPACIO para disparar<span class="mobile"><br>ARRASTRA para volar y disparar</span></div>' +
       '<div class="t4">[ENTER] para jugar<span class="mobile"> · TOCA para comenzar</span></div></div>';
     msg.style.display = 'grid';
   }
@@ -1174,9 +1180,9 @@
   window.__game.debugSpawnPowerup = spawnPowerup;
   window.__game.powerups = powerups;
   window.__game.effects = effects;
-  window.__game.mobile = mobile;
-  window.__game.debugMobileTilt = function (x, y) { mobile.enabled = true; mobile.calibrated = true; mobile.x = clamp(x, -1, 1); mobile.y = clamp(y, -1, 1); };
-  window.__game.debugMobileTap = function () { mobile.enabled = true; mobile.fireUntil = simTime + 0.19; };
+  window.__game.pointerControl = pointerControl;
+  window.__game.debugPointerDrag = function (x, y) { pointerControl.active = true; pointerControl.x = clamp(x, -1, 1); pointerControl.y = clamp(y, -1, 1); pointerControl.fireUntil = simTime + 0.22; };
+  window.__game.debugPointerRelease = function () { pointerControl.active = false; pointerControl.x = 0; pointerControl.y = 0; };
   window.__game.celestial = flyby;
   window.__game.sunFlare = sunFlare;
   window.__game.iceDebris = iceDebris;

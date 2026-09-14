@@ -55,6 +55,8 @@ This is an approximate effective generation time, not elapsed wall-clock project
 | `Space` | Fire |
 | `R` | Restart after a crash |
 | `♫ MUSIC` | Start, mute, or unmute the offline soundtrack |
+| Tilt device | Fly on mobile after sensor permission is granted |
+| Tap the game screen | Start/restart, or fire during active play |
 
 ## Features
 
@@ -63,6 +65,7 @@ This is an approximate effective generation time, not elapsed wall-clock project
 - Progressive survival difficulty: asteroid density and speed ramp up over time, while ship responsiveness increases to remain controllable.
 - Six power-ups: shield, triple shot, rapid fire, score multiplier, slow time, and nova.
 - Living backgrounds in the menu and game-over states.
+- Mobile controls: device tilt to fly and tap to fire. iOS requests device-orientation permission from the first tap.
 - Huge planet and Sun flybys with solar-corona particles.
 - Icy asteroid-comets that shed visual ice fragments. Decorative particles never deal damage.
 - Planetary and solar bodies are gameplay hazards during active play. A HUD warning appears when one approaches; avoid impact or use a shield.

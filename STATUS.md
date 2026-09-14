@@ -34,6 +34,7 @@ Notas:
   tiempo lento + nova que limpia la oleada.
 - ✅ Arena más compacta y oleadas: salir hacia los lados ya no crea una zona segura; las rocas entran por frente, laterales y arriba/abajo, son más grandes (3.25 / 1.85 / 0.95), aceleran individualmente al aproximarse, cada 55 s agrega rocas por oleada y la velocidad global escala ×1 → ×2.8 hasta los 3 min. La aceleración de la nave también escala ×1 → ×1.75 para mantener la respuesta.
 - ✅ `index.html`: HUD neon con sway ligado a la inercia de la nave, scanlines y marco curvo CRT luminoso (sin viñeta oscura).
+- ✅ Controles móviles: el primer tap solicita permiso de orientación cuando el navegador lo requiere, inclinar el dispositivo mueve la nave y cada tap durante la partida dispara una ráfaga. El tap también inicia o reinicia una partida.
 - ✅ FX espacial: 76 partículas de plasma de motor en emisiones esporádicas amarillo/naranja/rojo, 720 partículas de polvo/estrellas en suspensión y capas de hielo azul luminoso en los asteroides.
 - ✅ FX celestes: cada Sol gigante tiene una corona de 260 partículas ámbar animadas. Los asteroides helados desprenden hasta 420 chips de hielo azul como estela de cometa; son estrictamente visuales y no participan en colisiones ni daño.
 - ✅ Música y SFX offline: synthwave a 108 BPM generada por Web Audio nativo, desbloqueada por cualquier tecla física, click en la pantalla inicial o el botón MUSIC. Continúa en menú, partida y game over; incluye laser, impacto, pickup y crash en un canal de efectos independiente.

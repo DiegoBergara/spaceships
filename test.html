@@ -66,6 +66,11 @@
     check('menu-background-live', g.state === 'menu' && !g.ship.visible && g.time > menuTime && g.stats.spawned > menuSpawned && /ENTER/.test(document.getElementById('msg').textContent) && document.querySelector('#crashBox .t1').textContent === 'SPACESHIPS');
     window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Enter' }));
     check('menu-enter-start', g.state === 'play' && g.ship.visible && document.getElementById('msg').style.display === 'none');
+    var mobileStartX = g.ship.position.x, firedBeforeMobileTap = g.stats.fired;
+    g.debugMobileTilt(1, 0); g.debugRun(20);
+    g.debugMobileTap(); g.debugRun(1);
+    check('mobile-tilt-and-tap', g.ship.position.x > mobileStartX + 0.2 && g.stats.fired > firedBeforeMobileTap && g.mobile.enabled && g.mobile.calibrated);
+    g.debugMobileTilt(0, 0); g.debugRestart(); g.debugStart();
     check('space-populated', g.engineTrails.length === 2 && g.engineTrails[0].geometry.attributes.position.count === 38 && g.spaceDust.geometry.attributes.position.count === 720 && g.sunFlare.geometry.attributes.position.count === 260 && g.iceDebris.geometry.attributes.position.count === 420);
     check('offline-music-ready', g.audio.bpm === 108 && document.getElementById('audioToggle').textContent === '♫ MUSIC');
     var musicStarted = g.audio.start();

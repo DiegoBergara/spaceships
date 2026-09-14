@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Spaceships</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #02030a; }
+  body { position: relative; }
+  #scene { display: block; width: 100%; height: 100%; filter: contrast(1.13) saturate(1.26) brightness(1.04);
+             border-radius: 3.5% / 5%; transform: perspective(1100px) scale(1.012); transform-origin: center; }
+  body::before { content: ''; position: fixed; inset: 0; z-index: 20; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(120,210,255,.045) 0, rgba(120,210,255,.045) 1px, transparent 1px, transparent 4px);
+    mix-blend-mode: screen; animation: scan 7s linear infinite; }
+  body::after { content: ''; position: fixed; inset: 0; z-index: 21; pointer-events: none;
+    border: 2px solid rgba(116,223,255,.18); border-radius: 3.5% / 5%;
+    box-shadow: inset 0 0 24px rgba(76,180,255,.14); }
+  #msg {
+    position: fixed; inset: 0; z-index: 15; display: none; place-items: center;
+    color: #ffd166; font: 16px/1.5 monospace; text-align: center; padding: 24px; pointer-events: none;
+  }
+  #hud {
+    position: fixed; top: 10px; left: 14px; z-index: 5; pointer-events: none;
+    color: #cfe3ff; font: 15px/1.5 ui-monospace, Menlo, monospace; letter-spacing: 1px;
+    text-shadow: 0 0 5px #7cecff, 0 0 13px rgba(80,190,255,.8), 0 0 26px rgba(63,100,255,.34);
+    filter: drop-shadow(0 0 7px rgba(76,210,255,.45)); transition: transform .08s linear;
+  }
+  #hud .big { font-size: 28px; color: #8be9ff; }
+  #hud .dim { color: #7f93b8; font-size: 12px; }
+  #audioToggle { position: fixed; top: 14px; right: 16px; z-index: 30; color: #8be9ff;
+    background: rgba(4,12,28,.62); border: 1px solid rgba(115,230,255,.62); padding: 7px 10px;
+    font: 12px ui-monospace, Menlo, monospace; letter-spacing: 1px; cursor: pointer;
+    text-shadow: 0 0 8px #6eeaff; box-shadow: 0 0 12px rgba(79,218,255,.28); }
+  #audioToggle:hover { background: rgba(20,70,105,.8); }
+  #crashBox { width: min(550px, calc(100vw - 56px)); display: grid; gap: 12px; place-items: center;
+    box-sizing: border-box; padding: 30px 36px; border: 1px solid rgba(110,224,255,.42);
+    background: linear-gradient(135deg, rgba(4,13,30,.93), rgba(7,20,43,.86));
+    box-shadow: 0 0 0 1px rgba(81,164,255,.1) inset, 0 0 42px rgba(35,130,255,.2);
+    backdrop-filter: blur(5px); }
+  #crashBox .t1 { font: 800 clamp(34px, 5vw, 58px)/.98 ui-monospace, Menlo, monospace;
+    color: #8be9ff; letter-spacing: .13em; text-indent: .13em; text-shadow: 0 0 20px rgba(72,212,255,.8); }
+  #crashBox .t2 { font: 600 clamp(17px, 2.3vw, 23px)/1.1 ui-monospace, Menlo, monospace;
+    color: #ffcf67; letter-spacing: .2em; text-indent: .2em; }
+  #crashBox .t3 { max-width: 470px; color: #d9e8ff; font: 14px/1.55 ui-monospace, Menlo, monospace; }
+  #crashBox .t4 { color: #8be9ff; margin-top: 6px; font: 14px ui-monospace, Menlo, monospace; animation: blink 1.2s infinite; }
+  @keyframes blink { 50% { opacity: .3; } }
+  @keyframes scan { from { background-position: 0 0; } to { background-position: 0 56px; } }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="msg"></div>
+<script src="three.min.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

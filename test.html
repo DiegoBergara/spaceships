@@ -1,0 +1,177 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>SS test</title>
+<style>
+  html,body{margin:0;background:#000}
+  #scene{display:block}
+  #dbg{position:fixed;left:0;top:0;background:rgba(0,0,0,.7);color:#fff;font:11px monospace;padding:4px;z-index:50;max-width:100vw;white-space:pre-wrap}
+  #msg{display:none}
+  #hud{position:fixed;top:10px;left:14px;color:#cfe3ff;font:15px/1.5 ui-monospace,Menlo,monospace;pointer-events:none}
+  #hud .big{font-size:28px;color:#8be9ff} #hud .dim{color:#7f93b8;font-size:12px}
+  #crashBox{display:grid;gap:10px;place-items:center}
+  #crashBox .t1{font-size:46px;font-weight:700;color:#ff6b5e;letter-spacing:10px}
+  #crashBox .t2{font-size:26px;color:#8be9ff} #crashBox .t3{color:#ffd166}
+  #crashBox .t4{color:#7f93b8;margin-top:10px}
+</style>
+</head>
+<body>
+<canvas id="scene" width="960" height="600"></canvas>
+<div id="msg">CRASH</div>
+<pre id="dbg"></pre>
+<script src="three.min.js"></script>
+<script src="game.js"></script>
+<script>
+  var dbg = document.getElementById('dbg');
+  var out = [];
+  var failures = 0;
+  function report(s) { out.push(s); dbg.textContent = out.join('\n'); }
+  function check(name, ok) { if (!ok) failures++; report('ASSERT ' + name + '=' + (ok ? 'PASS' : 'FAIL')); }
+  window.addEventListener('error', function (e) { report('ERR: ' + e.message); });
+
+  // Probe SINCRONICO: debugRun() corre update+render en el mismo task,
+  // luego readPixels en el mismo task => buffer fresco (sin swap/composite).
+  function pxStats(tag) {
+    var g = window.__game;
+    if (!g) { report(tag + ' NO_GAME'); return; }
+    var gl = g.renderer.getContext();
+    var w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
+    var px = new Uint8Array(w * h * 4);
+    gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    var bright = 0, sum = 0, maxc = 0;
+    for (var i = 0; i < px.length; i += 4) {
+      var b = px[i] + px[i + 1] + px[i + 2];
+      if (b > maxc) maxc = b;
+      if (b / 3 > 45) bright++;
+      sum += b;
+    }
+    var sh = g.ship.position, ca = g.camera.position;
+    report(tag + ' ' + w + 'x' + h + ' bright=' + bright + '/' + (w * h) +
+      ' maxPix=' + maxc +
+      ' state=' + (g.state || '?') +
+      ' ship=(' + sh.x.toFixed(1) + ',' + sh.y.toFixed(1) + ',' + sh.z.toFixed(1) + ')' +
+      ' cam=(' + ca.x.toFixed(1) + ',' + ca.y.toFixed(1) + ',' + ca.z.toFixed(1) + ')' +
+      ' rocks=' + g.rocks.length + ' bullets=' + g.bullets.length + (gl.isContextLost() ? ' CTXLOST' : ''));
+  }
+
+  window.addEventListener('load', function () {
+    var g = window.__game;
+    if (!g) { report('NO_GAME_ON_LOAD'); return; }
+    report('loaded buf=' + g.renderer.getContext().drawingBufferWidth + 'x' + g.renderer.getContext().drawingBufferHeight);
+
+    // --- Menú: mismo panel de game over, mientras el campo de asteroides sigue vivo ---
+    var menuTime = g.time, menuSpawned = g.stats.spawned;
+    g.debugRun(60);
+    check('menu-background-live', g.state === 'menu' && !g.ship.visible && g.time > menuTime && g.stats.spawned > menuSpawned && /ENTER/.test(document.getElementById('msg').textContent) && document.querySelector('#crashBox .t1').textContent === 'SPACESHIPS');
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Enter' }));
+    check('menu-enter-start', g.state === 'play' && g.ship.visible && document.getElementById('msg').style.display === 'none');
+    check('space-populated', g.engineTrails.length === 2 && g.engineTrails[0].geometry.attributes.position.count === 38 && g.spaceDust.geometry.attributes.position.count === 720 && g.sunFlare.geometry.attributes.position.count === 260 && g.iceDebris.geometry.attributes.position.count === 420);
+    check('offline-music-ready', g.audio.bpm === 108 && document.getElementById('audioToggle').textContent === '♫ MUSIC');
+    var musicStarted = g.audio.start();
+    var soundEffectsStarted = g.audio.sfx('laser') && g.audio.sfx('impact') && g.audio.sfx('pickup');
+    check('offline-sound-effects-ready', soundEffectsStarted);
+    g.audio.stop();
+    check('offline-music-start-stop', musicStarted && !g.audio.active);
+    g.debugFlyby(true);
+    var flybyZ = g.celestial.position.z;
+    g.debugRun(60);
+    check('celestial-flyby', g.celestial.visible && g.sunFlare.visible && g.sunFlare.geometry.attributes.position.count === 260 && g.celestial.position.z > flybyZ && (g.celestial.children[0].scale.x >= 36 || g.celestial.children[2].scale.x >= 46));
+
+    // --- Part 2: mundo vivo ---
+    g.debugRun(60); pxStats('t1.0s');
+
+    // --- Part 3a: fuego continuo (espacio 1s) ---
+    g.keys.Space = true;
+    g.debugRun(60); pxStats('t2.0s');
+    report('fuego bullets=' + g.bullets.length + ' fired=' + g.stats.fired);
+    g.keys.Space = false;
+
+    // --- Part 3b: gran roque en linea de fuego => debe destruirse y dividirse ---
+    g.debugSpawn(0, 0, -25, 0);
+    var iceRock = g.rocks[g.rocks.length - 1];
+    iceRock.userData.ice.visible = true;
+    check('ice-asteroid-layer', !!iceRock.userData.ice);
+    g.debugRun(20);
+    var iceChipVisible = Array.from(g.iceDebris.geometry.attributes.position.array).some(function (value, index) { return index % 3 === 2 && value < 900; });
+    check('ice-chips-visual-only', iceChipVisible && g.iceDebris.userData.visualOnly === true);
+    g.keys.Space = true;
+    g.debugRun(180); pxStats('t5.0s');
+    report('split destroyed=' + g.stats.destroyed + ' rocks=' + g.rocks.length + ' parts=' + g.parts.length);
+    g.keys.Space = false;
+
+    // --- Part 3c: sin fuego, mediano pegado => debe crashar, conservando la música ---
+    g.audio.start();
+    g.debugSpawn(0, 0, -6, 1);
+    g.debugRun(120); pxStats('t7.0s');
+    check('gameover-music-continues', g.state === 'crashed' && g.audio.active);
+    report('final state=' + g.state + ' destroyed=' + g.stats.destroyed);
+    var spawnedAtCrash = g.stats.spawned;
+    g.debugRun(90);
+    check('crash-keeps-spawning', g.state === 'crashed' && g.stats.spawned > spawnedAtCrash);
+
+    // --- Part 4a: score + game over (best persiste en localStorage) ---
+    var sFinal = Math.floor(g.score);
+    report('4a gameover score=' + sFinal + ' best=' + Math.floor(g.best) +
+           ' msg=[' + document.getElementById('msg').textContent.replace(/\s+/g, ' ').trim() + ']');
+
+    // --- Part 4b: reinicio con tecla R (event real) ---
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyR' }));
+    report('4b post-R state=' + g.state + ' score=' + Math.floor(g.score) +
+           ' rocks=' + g.rocks.length + ' bullets=' + g.bullets.length +
+           ' parts=' + g.parts.length + ' best=' + Math.floor(g.best));
+    g.debugRun(30);
+    pxStats('t7.5s');
+
+    // --- Part 4c: dificultad progresiva ---
+    report('4c diff(0)=' + JSON.stringify(g.diff(0)) + ' diff(120)=' + JSON.stringify(g.diff(120)));
+    check('difficulty-escalates', g.diff(120).spawn < g.diff(0).spawn && g.diff(180).speed > 2.7 && g.playerSpeed(180) === 1.75);
+
+    // --- Part 5b: escudo recoge, muestra burbuja y absorbe un impacto ---
+    g.debugSpawnPowerup('shield', 0, 0, 0);
+    g.debugRun(1);
+    check('shield-pickup', g.effects.shield > 7.9 && g.powerups.length === 0);
+    g.debugSpawn(0, 0, 0, 1);
+    g.debugRun(1);
+    check('shield-absorbs-crash', g.state === 'play' && g.effects.shield > 7.8);
+
+    // --- Part 6: los tres power-ups restantes se recogen y modifican juego/HUD ---
+    g.debugSpawnPowerup('triple', 0, 0, 0);
+    g.debugSpawnPowerup('rapid', 0, 0, 0);
+    g.debugSpawnPowerup('score', 0, 0, 0);
+    g.debugRun(1);
+    check('all-powerups-collected', g.effects.triple > 9.9 && g.effects.rapid > 9.9 && g.effects.score > 9.9);
+    var firedBefore = g.stats.fired;
+    g.keys.Space = true;
+    g.debugRun(6);
+    g.keys.Space = false;
+    check('triple-rapid-fire', g.stats.fired - firedBefore >= 6);
+    var scoreBefore = g.score;
+    g.debugRun(60);
+    check('score-x2', g.score - scoreBefore > 19);
+    check('effects-hud', /TRIPLE/.test(document.getElementById('effects').textContent) && /RAPID/.test(document.getElementById('effects').textContent) && /x2 SCORE/.test(document.getElementById('effects').textContent));
+
+    // --- Nuevos power-ups: tiempo lento modifica física; nova limpia la oleada ---
+    g.debugSpawnPowerup('slow', 0, 0, 0);
+    g.debugRun(1);
+    var slowRockStart = g.rocks.length;
+    g.debugSpawn(0, 0, -25, 1);
+    var slowRock = g.rocks[g.rocks.length - 1], zBefore = slowRock.position.z;
+    g.debugRun(30);
+    check('slow-time', g.effects.slow > 7.4 && slowRock.userData.accel > 1.07 && slowRock.position.z - zBefore < 4.5 && g.rocks.length >= slowRockStart);
+    g.debugSpawn(4, 0, -20, 0);
+    g.debugSpawn(-4, 0, -20, 1);
+    g.debugSpawnPowerup('nova', 0, 0, 0);
+    g.debugRun(1);
+    check('nova-clears-wave', g.rocks.length === 0 && g.stats.destroyed > 0);
+
+    // --- HUD reacciona levemente a la inercia de la nave ---
+    g.keys.KeyD = true;
+    g.debugRun(30);
+    g.keys.KeyD = false;
+    check('hud-sway', /translate\(/.test(document.getElementById('hud').style.transform));
+    report('RESULT ' + (failures ? 'FAIL (' + failures + ')' : 'PASS'));
+  });
+</script>
+</body>
+</html>

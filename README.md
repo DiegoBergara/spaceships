@@ -35,14 +35,7 @@ The repository is hosted on GitHub Pages only to make the finished static game a
 
 Approximately **3.7 million tokens** were used during the project.
 
-A local LM Studio benchmark of the loaded Qwen3.8 27B model measured an average sustained generation rate of **5.36 tokens/second** across three runs. At that observed rate:
-
-```text
-3,700,000 tokens ÷ 5.36 tokens/second
-= approximately 690,701 seconds
-= approximately 191.9 hours
-= approximately 8.0 continuous days of generation
-```
+A local LM Studio benchmark of the loaded Qwen3.8 27B model measured an average sustained generation rate of **5.36 tokens/second** across three runs.
 
 This is an approximate effective generation time, not elapsed wall-clock project time. Token rate varies with prompt size, context length, reasoning mode, thermals, and concurrent system work.
 

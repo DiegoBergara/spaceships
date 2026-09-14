@@ -170,6 +170,13 @@
     g.debugRun(30);
     g.keys.KeyD = false;
     check('hud-sway', /translate\(/.test(document.getElementById('hud').style.transform));
+
+    // --- Cuerpos celestes: colisión directa destruye la nave y explica la causa ---
+    g.debugRestart(); g.debugStart();
+    g.debugFlyby(false);
+    g.celestial.position.copy(g.ship.position);
+    g.debugRun(1);
+    check('planetary-hazard-kills', g.state === 'crashed' && /PLANETARY IMPACT/.test(document.getElementById('msg').textContent));
     report('RESULT ' + (failures ? 'FAIL (' + failures + ')' : 'PASS'));
   });
 </script>

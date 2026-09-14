@@ -338,9 +338,12 @@
     planet.visible = !isSun; planetGlow.visible = !isSun; sun.visible = isSun; sunLight.visible = isSun; sunFlare.visible = isSun;
     planet.scale.setScalar(radius); planetGlow.scale.setScalar(radius * 1.05); sun.scale.setScalar(radius);
     sunFlare.scale.setScalar(radius);
-    flyby.position.set((Math.random() < 0.5 ? -1 : 1) * (38 + Math.random() * 32), (Math.random() * 2 - 1) * 22, -128);
+    // El borde del cuerpo pasa cerca, pero deja una ruta de escape si el piloto se mueve.
+    flyby.position.set((Math.random() < 0.5 ? -1 : 1) * (radius + 6 + Math.random() * 12), (Math.random() * 2 - 1) * 14, -128);
     flyby.rotation.set(Math.random() * 4, Math.random() * 4, Math.random() * 2);
     flyby.userData.speed = 13 + Math.random() * 7;
+    flyby.userData.radius = radius;
+    flyby.userData.isSun = isSun;
     flyby.visible = true;
   }
 
@@ -359,6 +362,22 @@
         fp.setXYZ(i, flareBase[i * 3] * pulse, flareBase[i * 3 + 1] * pulse, flareBase[i * 3 + 2] * pulse);
       }
       fp.needsUpdate = true;
+    }
+    // Planetas y soles son peligros físicos solo durante la partida. Sus partículas siguen siendo decorativas.
+    if (state === 'play') {
+      var dx = flyby.position.x - ship.position.x, dy = flyby.position.y - ship.position.y, dz = flyby.position.z - ship.position.z;
+      var hitRadius = flyby.userData.radius + 1.0;
+      if (dx * dx + dy * dy + dz * dz < hitRadius * hitRadius) {
+        if (effects.shield > 0) {
+          effects.shield = 0;
+          flyby.visible = false;
+          flybyTimer = 8 + Math.random() * 8;
+          audioEngine.sfx('impact');
+        } else {
+          crash(null, flyby.userData.isSun ? 'SOLAR IMPACT' : 'PLANETARY IMPACT');
+          return;
+        }
+      }
     }
     if (flyby.position.z > 34) {
       flyby.visible = false;
@@ -513,6 +532,7 @@
 
   var rocks = [], rockPool = [], spawnTimer = 0.5;
   var stats = { spawned: 0, alive: 0, crashed: false, destroyed: 0, fired: 0 };
+  var crashCause = 'ASTEROID IMPACT';
   // Fragmentos puramente visuales que se desprenden de los asteroides helados. No tienen colisión.
   var iceDebrisCount = 420, iceDebrisPos = new Float32Array(iceDebrisCount * 3), iceDebrisCol = new Float32Array(iceDebrisCount * 3), iceDebrisSlots = [], iceDebrisCursor = 0;
   for (var id = 0; id < iceDebrisCount; id++) {
@@ -658,8 +678,9 @@
   }
 
   // ---- Crash (colision) ----
-  function crash(rock) {
+  function crash(rock, cause) {
     if (state === 'crashed') return;
+    crashCause = cause || 'ASTEROID IMPACT';
     state = 'crashed';
     audioEngine.sfx('crash');
     // La música continúa también durante game over; el usuario puede mutearla desde el control MUSIC.
@@ -985,13 +1006,15 @@
   var hudTime = document.createElement('div');
   var hudBest = document.createElement('div');
   var hudEffects = document.createElement('div');
+  var hudHazard = document.createElement('div');
   var hudDriftX = 0, hudDriftY = 0;
   hudScore.id = 'score'; hudScore.className = 'big'; hudScore.textContent = '0';
   hudTime.id = 'time'; hudTime.textContent = '0:00';
   hudBest.id = 'best'; hudBest.className = 'dim';
   hudBest.textContent = 'BEST ' + Math.floor(best);
   hudEffects.id = 'effects'; hudEffects.className = 'dim';
-  hud.appendChild(hudScore); hud.appendChild(hudTime); hud.appendChild(hudBest); hud.appendChild(hudEffects);
+  hudHazard.id = 'hazard'; hudHazard.className = 'hazard';
+  hud.appendChild(hudScore); hud.appendChild(hudTime); hud.appendChild(hudBest); hud.appendChild(hudEffects); hud.appendChild(hudHazard);
   document.body.appendChild(hud);
   var audioBtn = document.createElement('button');
   audioBtn.id = 'audioToggle';
@@ -1029,6 +1052,13 @@
     var active = [];
     for (var k in effects) if (effects[k] > 0) active.push(POWERUPS[k].label + ' ' + effects[k].toFixed(1) + 's');
     hudEffects.textContent = active.join('  ');
+    var hazard = '';
+    if (state === 'play' && flyby.visible) {
+      var dx = flyby.position.x - ship.position.x, dy = flyby.position.y - ship.position.y, dz = flyby.position.z - ship.position.z;
+      var surfaceDistance = Math.sqrt(dx * dx + dy * dy + dz * dz) - flyby.userData.radius;
+      if (surfaceDistance < 28) hazard = '⚠ ' + (flyby.userData.isSun ? 'SOLAR' : 'PLANETARY') + ' HAZARD ' + Math.max(0, Math.ceil(surfaceDistance));
+    }
+    hudHazard.textContent = hazard;
   }
 
   // Presión sostenida: cada 55 s agrega una roca por oleada; la velocidad sigue subiendo hasta 3 min.
@@ -1049,8 +1079,8 @@
     msg.innerHTML =
       '<div id="crashBox">' +
       '<div class="t1">CRASH</div>' +
-      '<div class="t2">SCORE ' + s + '</div>' +
-      '<div class="t3">BEST ' + Math.floor(best) + (newBest ? '  -  !NUEVO RECORD!' : '') + '</div>' +
+      '<div class="t2">' + crashCause + '</div>' +
+      '<div class="t3">SCORE ' + s + '<br>BEST ' + Math.floor(best) + (newBest ? '  -  !NUEVO RECORD!' : '') + '</div>' +
       '<div class="t4">[R] para reiniciar</div>' +
       '</div>';
     msg.style.display = 'grid';
@@ -1071,7 +1101,8 @@
     hud.style.transform = '';
     camera.position.set(0, 2.6, 8.5);
     camera.rotation.set(0, 0, 0);
-    score = 0; scoreMult = 1; simTime = 0; crashT = 0;
+    score = 0; scoreMult = 1; simTime = 0; crashT = 0; crashCause = 'ASTEROID IMPACT';
+    hudHazard.textContent = '';
     for (var k in effects) effects[k] = 0;
     shieldBubble.visible = false;
     powerTimer = 8;

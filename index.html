@@ -27,6 +27,8 @@
   }
   #hud .big { font-size: 28px; color: #8be9ff; }
   #hud .dim { color: #7f93b8; font-size: 12px; }
+  #hud .hazard { color: #ff8b72; font-weight: 800; font-size: 12px; letter-spacing: 1.5px;
+    text-shadow: 0 0 7px #ff5c43, 0 0 18px rgba(255,65,42,.7); animation: hazardBlink .55s steps(2) infinite; }
   #audioToggle { position: fixed; top: 14px; right: 16px; z-index: 30; color: #8be9ff;
     background: rgba(4,12,28,.62); border: 1px solid rgba(115,230,255,.62); padding: 7px 10px;
     font: 12px ui-monospace, Menlo, monospace; letter-spacing: 1px; cursor: pointer;
@@ -44,6 +46,7 @@
   #crashBox .t3 { max-width: 470px; color: #d9e8ff; font: 14px/1.55 ui-monospace, Menlo, monospace; }
   #crashBox .t4 { color: #8be9ff; margin-top: 6px; font: 14px ui-monospace, Menlo, monospace; animation: blink 1.2s infinite; }
   @keyframes blink { 50% { opacity: .3; } }
+  @keyframes hazardBlink { 50% { opacity: .22; } }
   @keyframes scan { from { background-position: 0 0; } to { background-position: 0 56px; } }
 </style>
 </head>
